@@ -1,3 +1,4 @@
+import math
 import random
 import pandas as pd
 from tqdm import tqdm
@@ -39,8 +40,9 @@ def get_changes(horizon, changes_times, changes_values, change_probability, max_
 
 
 def run_simulation(horizon, algo, initial_arms, changes_times=None, changes_values=None, change_probability=None,
-                   max_changes=None):
+                   max_changes=None, N=1):
     """
+    :param N: number of simulation to average on
     :param horizon: number of rounds
     :param algo: the algorithm that chooses the arms
     :param changes_times: list of values between 0 and 1 such that a random change will
@@ -52,18 +54,28 @@ def run_simulation(horizon, algo, initial_arms, changes_times=None, changes_valu
     :param initial_arms: list of values for initial arms
     :return: dataframe containing information on the run and the array describing the changes
     """
-    data = np.empty(horizon, dtype=object)
+    num_arms = len(initial_arms)
     changes_times, changes_values = get_changes(horizon, changes_times, changes_values, change_probability, max_changes,
-                                                len(initial_arms))
-    phase = 0  # the current phase
-    # for t in range(horizon):
-    #     chosen_arm = algo.select_arm()
-    #     if t > change * horizon:
-    #         reward = draw(new_arms[chosen_arm])
-    #     else:
-    #         reward = draw(arms[chosen_arm])
-    #     algo.update(chosen_arm, reward)
-    #     row = algo.ucb_values + algo.lcb_values + algo.values + algo.counts
-    #     data[t] = row
-    # return data
+                                                num_arms)
 
+    arms_range = range(num_arms)
+    columns = [f"ucb{arm}" for arm in arms_range] + [f"lcb{arm}" for arm in arms_range] + \
+              [f"mu{arm}" for arm in arms_range] + [f"c{arm}" for arm in arms_range]
+
+    data = np.zeros((horizon, len(columns)))
+    changes_values.insert(0, initial_arms)
+
+    for _ in tqdm(range(N)):
+        algo.reset()
+        phase = 0
+        for t in range(horizon):
+            chosen_arm = algo.select_arm()
+            if t == math.ceil(changes_times[phase] * horizon):
+                phase += 1
+            reward = draw(changes_values[phase][chosen_arm])
+            algo.update(chosen_arm, reward)
+            row = algo.ucb_values + algo.lcb_values + algo.values + algo.counts
+            data[t] += (1 / N) * np.array(row)
+
+    data = pd.DataFrame(list(data), columns=columns)
+    return data, changes_times, changes_values
