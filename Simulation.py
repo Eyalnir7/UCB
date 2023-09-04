@@ -3,6 +3,7 @@ import random
 import pandas as pd
 from tqdm import tqdm
 import numpy as np
+import pickle
 
 from UCB1 import UCB1
 
@@ -40,7 +41,7 @@ def get_changes(horizon, changes_times, changes_values, change_probability, max_
 
 
 def run_simulation(horizon, algo, initial_arms, changes_times=None, changes_values=None, change_probability=None,
-                   max_changes=None, N=1):
+                   max_changes=None, N=1, save=False):
     """
     :param N: number of simulation to average on
     :param horizon: number of rounds
@@ -78,4 +79,7 @@ def run_simulation(horizon, algo, initial_arms, changes_times=None, changes_valu
             data[t] += (1 / N) * np.array(row)
 
     data = pd.DataFrame(list(data), columns=columns)
+    if save:
+        with open(f"simulations/{horizon}_{changes_times}", 'wb') as file:
+            pickle.dump((data, changes_times, changes_values), file)
     return data, changes_times, changes_values
