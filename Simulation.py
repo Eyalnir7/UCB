@@ -86,7 +86,10 @@ def run_simulation(horizon, algo, initial_arms, changes_times=None, changes_valu
             reward = draw(changes_values[phase][chosen_arm], deterministic)
             algo.update(chosen_arm, reward)
             row = algo.ucb_values + algo.lcb_values + algo.values + algo.counts
-            cumulant_regret[t] += (1/N) * (cumulant_regret[t-1] + np.max(changes_values[phase]) - reward)
+            if t != 0:
+                cumulant_regret[t] += (1/N) * (cumulant_regret[t-1] + np.max(changes_values[phase]) - reward)
+            else:
+                cumulant_regret[t] += (1/N) * (0 + np.max(changes_values[phase]) - reward)
             data[t] += (1 / N) * np.array(row)
 
     data = pd.DataFrame(list(data), columns=columns)
