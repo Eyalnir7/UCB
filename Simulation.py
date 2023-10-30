@@ -10,10 +10,12 @@ from UCB1 import UCB1
 CHANGE_P = 4  # used in run simulation as CHANGE_P/horizon for the probability of change in some round
 
 
-def draw(p):
+def draw(p, deterministic):
     """
-    draw from ber(p)
+    draw from ber(p) or return p if deterministic
     """
+    if deterministic:
+        return p
     if random.random() > p:
         return 0.0
     else:
@@ -31,18 +33,19 @@ def get_changes(horizon, changes_times, changes_values, change_probability, max_
         return None
     if change_probability is None:
         change_probability = CHANGE_P / horizon
-    numbers = np.arange(1, horizon + 1)
-    selected = np.random.rand(horizon) < change_probability
-    selected_numbers = numbers[selected].tolist()
+    num_changes = np.random.binomial(horizon, change_probability)
+    changes_times = np.random.rand(num_changes)
     if max_changes is not None:
-        selected_numbers = random.sample(selected_numbers, max_changes)
-    random_pairs = np.random.rand(len(selected_numbers), num_arms).tolist()
-    return selected_numbers, random_pairs
+        changes_times = random.sample(changes_times, max_changes)
+    random_pairs = np.random.rand(len(changes_times), num_arms).tolist()
+    return changes_times, random_pairs
 
 
 def run_simulation(horizon, algo, initial_arms, changes_times=None, changes_values=None, change_probability=None,
-                   max_changes=None, N=1, save=False):
+                   max_changes=None, N=1, save=False, deterministic=False):
     """
+    :param deterministic: whether the arms are bernoulli or deterministic
+    :param save: whether to save the log file or not
     :param N: number of simulation to average on
     :param horizon: number of rounds
     :param algo: the algorithm that chooses the arms
@@ -65,21 +68,29 @@ def run_simulation(horizon, algo, initial_arms, changes_times=None, changes_valu
 
     data = np.zeros((horizon, len(columns)))
     changes_values.insert(0, initial_arms)
+    changes_times.append(1)
 
-    for _ in tqdm(range(N)):
+    cumulant_regret = np.zeros(horizon)
+
+    rangeN = range(N)
+    if N != 1:
+        rangeN = tqdm(rangeN)
+
+    for _ in rangeN:
         algo.reset()
         phase = 0
         for t in range(horizon):
             chosen_arm = algo.select_arm()
             if t == math.ceil(changes_times[phase] * horizon):
                 phase += 1
-            reward = draw(changes_values[phase][chosen_arm])
+            reward = draw(changes_values[phase][chosen_arm], deterministic)
             algo.update(chosen_arm, reward)
             row = algo.ucb_values + algo.lcb_values + algo.values + algo.counts
+            cumulant_regret[t] += (1/N) * (cumulant_regret[t-1] + np.max(changes_values[phase]) - reward)
             data[t] += (1 / N) * np.array(row)
 
     data = pd.DataFrame(list(data), columns=columns)
     if save:
         with open(f"simulations/{horizon}_{changes_times}", 'wb') as file:
             pickle.dump((data, changes_times, changes_values), file)
-    return data, changes_times, changes_values
+    return data, changes_times, changes_values, cumulant_regret
