@@ -45,8 +45,11 @@ class DUCB:
         self.t += 1
 
     def reset(self):
-        self.counts = [0 for _ in range(len(self.counts))]
-        self.values = [0.0 for _ in range(len(self.counts))]
-        self.ucb_values = [0.0 for arm in range(len(self.counts))]
-        self.lcb_values = [0.0 for arm in range(len(self.counts))]
+        num_arms = len(self.counts)
+        self.counts = [0 for _ in range(num_arms)]
+        self.values = [0.0 for _ in range(num_arms)]
+        self.ucb_values = [0.0 for arm in range(num_arms)]
+        self.lcb_values = [0.0 for arm in range(num_arms)]
         self.t = 1
+        self.dcounts = np.zeros(num_arms)
+        self.dsums = np.zeros(num_arms)

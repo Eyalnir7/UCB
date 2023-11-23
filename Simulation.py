@@ -5,8 +5,6 @@ from tqdm import tqdm
 import numpy as np
 import pickle
 
-from UCB1 import UCB1
-
 CHANGE_P = 4  # used in run simulation as CHANGE_P/horizon for the probability of change in some round
 
 
@@ -79,6 +77,7 @@ def run_simulation(horizon, algo, initial_arms, changes_times=None, changes_valu
     for _ in rangeN:
         algo.reset()
         phase = 0
+        current_regret = np.zeros(horizon)
         for t in range(horizon):
             chosen_arm = algo.select_arm()
             if t == math.ceil(changes_times[phase] * horizon):
@@ -87,10 +86,11 @@ def run_simulation(horizon, algo, initial_arms, changes_times=None, changes_valu
             algo.update(chosen_arm, reward)
             row = algo.ucb_values + algo.lcb_values + algo.values + algo.counts
             if t != 0:
-                cumulant_regret[t] += (1/N) * (cumulant_regret[t-1] + np.max(changes_values[phase]) - reward)
+                current_regret[t] += current_regret[t-1] + np.max(changes_values[phase]) - reward
             else:
-                cumulant_regret[t] += (1/N) * (0 + np.max(changes_values[phase]) - reward)
+                current_regret[t] += np.max(changes_values[phase]) - reward
             data[t] += (1 / N) * np.array(row)
+        cumulant_regret += (1/N) * current_regret
 
     data = pd.DataFrame(list(data), columns=columns)
     if save:
