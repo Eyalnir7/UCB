@@ -32,7 +32,7 @@ def get_changes(horizon, changes_times, changes_values, change_probability, max_
     if change_probability is None:
         change_probability = CHANGE_P / horizon
     num_changes = np.random.binomial(horizon, change_probability)
-    changes_times = np.random.rand(num_changes)
+    changes_times = np.random.randint(1, horizon, size=num_changes)
     if max_changes is not None:
         changes_times = random.sample(changes_times, max_changes)
     random_pairs = np.random.rand(len(changes_times), num_arms).tolist()
@@ -47,8 +47,8 @@ def run_simulation(horizon, algo, initial_arms, changes_times=None, changes_valu
     :param N: number of simulation to average on
     :param horizon: number of rounds
     :param algo: the algorithm that chooses the arms
-    :param changes_times: list of values between 0 and 1 such that a random change will
-    happen at round changes[i]*horizon.
+    :param changes_times: list of values in [1, horizon] such that a change will occur in those rounds. For example if
+    we have round 4 in the list, then in round 4 the rewards will be chosen from a different distribution
     :param max_changes: if changes_times is None, you can input a max number of changes to allow
     :param change_probability: probability of change in arms of every round. if None use 4/horizon. only used if
     changes times is None. Values for after change are assign uniformly
@@ -66,7 +66,7 @@ def run_simulation(horizon, algo, initial_arms, changes_times=None, changes_valu
 
     data = np.zeros((horizon, len(columns)))
     changes_values.insert(0, initial_arms)
-    changes_times.append(1)
+    changes_times.append(horizon+1)
 
     cumulant_regret = np.zeros(horizon)
 
@@ -79,9 +79,9 @@ def run_simulation(horizon, algo, initial_arms, changes_times=None, changes_valu
         phase = 0
         current_regret = np.zeros(horizon)
         for t in range(horizon):
-            chosen_arm = algo.select_arm()
-            if t == math.ceil(changes_times[phase] * horizon):
+            if t == changes_times[phase]-1:
                 phase += 1
+            chosen_arm = algo.select_arm()
             reward = draw(changes_values[phase][chosen_arm], deterministic)
             algo.update(chosen_arm, reward)
             row = algo.ucb_values + algo.lcb_values + algo.values + algo.counts

@@ -24,7 +24,7 @@ class Graph:
             plt.plot(self.xrange, self.data[f"c{i}"], label=f"arm{i}", color=self.distinct_colors[i])
 
         for i, t in enumerate(self.changes_times):
-            end = math.ceil(t * self.horizon)
+            end = math.ceil(t-1)
             plt.axvline(x=end)
         plt.title(f"avg of counts across N simulations as function of round for horizon {self.horizon}")
         plt.legend()
@@ -33,7 +33,7 @@ class Graph:
     def plot_changing_means(self):
         start = 1
         for i, t in enumerate(self.changes_times):
-            end = math.ceil(t * self.horizon)
+            end = math.ceil(t)
             plt.axvline(x=end)
             for arm in range(self.num_arms):
                 plt.axhline(y=self.changes_values[i][arm], xmin=start / self.horizon, xmax=end / self.horizon,
@@ -57,7 +57,7 @@ class Graph:
         regret = 0
         start = 0
         for phase, t in enumerate(self.changes_times):
-            end = math.ceil(t * self.horizon)
+            end = math.ceil(t)
             if end == self.horizon:
                 end -= 1
             max_arm = np.argmax(self.changes_values[phase])
@@ -81,7 +81,7 @@ class Graph:
         start = 0
         rounds = []
         for phase, t in enumerate(self.changes_times):
-            end = math.ceil(t * self.horizon)
+            end = math.ceil(t)
             max_arm = np.argmax(self.changes_values[phase])
             current_rounds = np.zeros(end - start)
             for arm in range(self.num_arms):
